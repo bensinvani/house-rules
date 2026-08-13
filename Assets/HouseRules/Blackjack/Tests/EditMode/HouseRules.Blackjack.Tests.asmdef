@@ -3,6 +3,7 @@
     "rootNamespace": "HouseRules.Blackjack.Tests",
     "references": [
         "HouseRules.Blackjack",
+        "HouseRules.Blackjack.Presentation",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

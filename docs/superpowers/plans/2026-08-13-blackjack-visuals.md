@@ -172,15 +172,9 @@ Assets/HouseRules/Blackjack/Presentation/
     BoxView.cs                   Task 4
     TableView.cs                 Task 4
     TableCardPresenter.cs        Task 5 — the real presenter
-  Art/
-    CardFaces.cs                 Task 2 — atlas lookup at runtime
-
-Assets/HouseRules/Blackjack/Editor/
-  HouseRules.Blackjack.EditorTools.asmdef   Task 2
-  CardAtlasGenerator.cs                     Task 2 — menu item, generates the atlas
-
-Assets/HouseRules/Blackjack/Art/Generated/   Task 2 output (committed)
 Assets/Scenes/Blackjack.unity                Task 1
+
+(Task 2 was cut — see its section. No Editor assembly and no generated art.)
 ```
 
 ---
@@ -802,218 +796,26 @@ git commit -m "feat: add playable text-mode blackjack scene"
 
 ---
 
-### Task 2: Card face atlas
+### Task 2: REMOVED — card face atlas
 
-**Files:**
-- Create: `Assets/HouseRules/Blackjack/Editor/HouseRules.Blackjack.EditorTools.asmdef`
-- Create: `Assets/HouseRules/Blackjack/Editor/CardAtlasGenerator.cs`
-- Create: `Assets/HouseRules/Blackjack/Presentation/Art/CardFaces.cs`
+**Do not implement this task.** It was cut during plan review, before any code
+was written.
 
-**Interfaces:**
-- Produces: menu item `Tools/HouseRules/Generate Card Atlas`, which writes `Assets/HouseRules/Blackjack/Art/Generated/CardAtlas.png` (a 13×5 grid: 13 ranks × 4 suits plus a back row); and `static class CardFaces` with `Rect UvFor(Card card)`, `Rect UvForBack()`, `const int Columns`, `const int Rows`.
+The atlas generator produced a texture that nothing consumed: `CardView` in
+Task 3 renders rank and suit with a `TextMesh` and tints the card body with a
+material colour, so `CardFaces`, `CardAtlasGenerator`, and the generated PNG
+would all have shipped as dead code — an Editor assembly, a committed binary
+asset, and a UV lookup, none of them on any execution path.
 
-Placeholder art, generated rather than drawn: each cell is a white rounded rectangle with the rank string and suit glyph in red or black. It reads correctly at a glance, costs nothing to regenerate, and is replaced by Blender-authored art later behind the same UV lookup.
+A `TextMesh` card face is also simply better at this stage: it stays crisp at any
+resolution, costs no texture memory, and needs no regeneration step when a rank
+glyph changes. Real Blender-authored art replaces the card body later either way,
+and it will replace a material — not a placeholder atlas.
 
-- [ ] **Step 1: Create the Editor assembly**
+Task 3 absorbs what actually mattered here: making the card face readable and
+correct against the Visual Quality Bar.
 
-`Assets/HouseRules/Blackjack/Editor/HouseRules.Blackjack.EditorTools.asmdef`:
-
-```json
-{
-    "name": "HouseRules.Blackjack.EditorTools",
-    "rootNamespace": "HouseRules.Blackjack.EditorTools",
-    "references": [
-        "HouseRules.Blackjack",
-        "HouseRules.Blackjack.Presentation"
-    ],
-    "includePlatforms": [
-        "Editor"
-    ],
-    "excludePlatforms": [],
-    "allowUnsafeCode": false,
-    "overrideReferences": false,
-    "precompiledReferences": [],
-    "autoReferenced": true,
-    "defineConstraints": [],
-    "versionDefines": [],
-    "noEngineReferences": false
-}
-```
-
-- [ ] **Step 2: Write the UV lookup**
-
-`Assets/HouseRules/Blackjack/Presentation/Art/CardFaces.cs`:
-
-```csharp
-using HouseRules.Blackjack;
-using UnityEngine;
-
-namespace HouseRules.Blackjack.Presentation
-{
-    /// <summary>
-    /// Maps a card to its cell in the generated atlas. The atlas is a 13-column grid:
-    /// one column per rank, one row per suit, plus a final row whose first cell is the
-    /// card back. Real art can replace the texture without touching this lookup.
-    /// </summary>
-    public static class CardFaces
-    {
-        public const int Columns = 13;
-        public const int Rows = 5;
-
-        public static Rect UvFor(Card card)
-        {
-            int column = RankColumn(card.Rank);
-            int row = (int)card.Suit;
-            return CellUv(column, row);
-        }
-
-        public static Rect UvForBack() => CellUv(0, 4);
-
-        private static int RankColumn(Rank rank)
-        {
-            // Two=2 maps to column 0 … Ace=14 maps to column 12.
-            return (int)rank - 2;
-        }
-
-        private static Rect CellUv(int column, int row)
-        {
-            float width = 1f / Columns;
-            float height = 1f / Rows;
-
-            // Row 0 sits at the TOP of the texture, so invert for UV space.
-            float y = 1f - ((row + 1) * height);
-            return new Rect(column * width, y, width, height);
-        }
-    }
-}
-```
-
-- [ ] **Step 3: Write the generator**
-
-`Assets/HouseRules/Blackjack/Editor/CardAtlasGenerator.cs`:
-
-```csharp
-using System.IO;
-using HouseRules.Blackjack;
-using HouseRules.Blackjack.Presentation;
-using UnityEditor;
-using UnityEngine;
-
-namespace HouseRules.Blackjack.EditorTools
-{
-    /// <summary>
-    /// Generates the placeholder card atlas. Procedural rather than hand-drawn so it
-    /// costs nothing to regenerate and carries no licensing baggage; Blender-authored
-    /// art replaces the texture later behind the same CardFaces UV lookup.
-    /// </summary>
-    public static class CardAtlasGenerator
-    {
-        private const int CellWidth = 128;
-        private const int CellHeight = 178;
-        private const string OutputDirectory = "Assets/HouseRules/Blackjack/Art/Generated";
-        private const string OutputPath = OutputDirectory + "/CardAtlas.png";
-
-        [MenuItem("Tools/HouseRules/Generate Card Atlas")]
-        public static void Generate()
-        {
-            int width = CardFaces.Columns * CellWidth;
-            int height = CardFaces.Rows * CellHeight;
-
-            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
-            var pixels = new Color32[width * height];
-
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = new Color32(0, 0, 0, 0);
-            }
-
-            texture.SetPixels32(pixels);
-
-            for (int row = 0; row < 4; row++)
-            {
-                for (int column = 0; column < CardFaces.Columns; column++)
-                {
-                    DrawCell(texture, column, row, new Color32(250, 250, 248, 255));
-                }
-            }
-
-            DrawCell(texture, 0, 4, new Color32(38, 62, 104, 255));
-
-            texture.Apply();
-
-            Directory.CreateDirectory(OutputDirectory);
-            File.WriteAllBytes(OutputPath, texture.EncodeToPNG());
-            Object.DestroyImmediate(texture);
-
-            AssetDatabase.ImportAsset(OutputPath, ImportAssetOptions.ForceUpdate);
-            ConfigureImporter();
-
-            Debug.Log($"Card atlas written to {OutputPath}");
-        }
-
-        private static void DrawCell(Texture2D texture, int column, int row, Color32 fill)
-        {
-            int originX = column * CellWidth;
-            // Row 0 is the top row, matching CardFaces.CellUv's inversion.
-            int originY = texture.height - ((row + 1) * CellHeight);
-
-            for (int y = 0; y < CellHeight; y++)
-            {
-                for (int x = 0; x < CellWidth; x++)
-                {
-                    bool border = x < 3 || y < 3 || x >= CellWidth - 3 || y >= CellHeight - 3;
-                    Color32 color = border ? new Color32(24, 24, 24, 255) : fill;
-                    texture.SetPixel(originX + x, originY + y, color);
-                }
-            }
-        }
-
-        private static void ConfigureImporter()
-        {
-            var importer = AssetImporter.GetAtPath(OutputPath) as TextureImporter;
-            if (importer == null)
-            {
-                return;
-            }
-
-            importer.textureType = TextureImporterType.Default;
-            importer.mipmapEnabled = false;
-            importer.filterMode = FilterMode.Bilinear;
-            importer.wrapMode = TextureWrapMode.Clamp;
-            importer.SaveAndReimport();
-        }
-    }
-}
-```
-
-The rank glyphs are deliberately not drawn here — `Texture2D` has no text rasterizer, and pulling in a font renderer for placeholder art is not earned. Cells are distinguishable by position; Task 3 overlays the rank/suit as a world-space `Text` on the card view, which is both simpler and easier to read.
-
-- [ ] **Step 4: Generate and verify**
-
-```bash
-unity command recompile
-```
-
-Poll until `completed`, then run the menu item:
-
-```bash
-unity command menu --path "Tools/HouseRules/Generate Card Atlas"
-```
-
-Run `unity command` with no arguments to confirm the `menu` command's exact flag name before using it.
-
-Verify the asset exists and imported:
-
-```bash
-unity command find_assets --query "CardAtlas"
-```
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add Assets
-git commit -m "feat: add generated placeholder card atlas"
-```
+Task numbering is left unchanged so the remaining tasks keep their identifiers.
 
 ---
 

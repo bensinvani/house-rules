@@ -91,10 +91,16 @@ namespace HouseRules.Blackjack.Tests
                     round.Apply(PlayerAction.DeclineInsurance);
                 }
 
+                int guard = 0;
                 while (round.State == RoundState.PlayerTurn)
                 {
                     round.Apply(BasicStrategy.Decide(
                         round.CurrentHand, round.DealerUpcard, round.LegalActions));
+
+                    if (++guard > 100)
+                    {
+                        Assert.Fail("Player turn failed to terminate — likely a turn-advancement bug.");
+                    }
                 }
 
                 Assert.AreEqual(RoundState.Complete, round.State);

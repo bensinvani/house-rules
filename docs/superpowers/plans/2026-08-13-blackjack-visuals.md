@@ -16,6 +16,51 @@ Task 1 delivers a scene you can press Play on and actually play: real betting, h
 
 This ordering is not just about seeing something sooner. A text presenter and a card presenter implement the *same* interface, so Task 1 proves the wiring — session, sequencer, input gating, persistence — while the visual layer is still trivial. Building the pretty version first would surface wiring bugs and layout bugs simultaneously, with no way to tell them apart.
 
+## Visual Quality Bar
+
+Task 1's UI was deliberately throwaway. Every task from here must leave the game
+looking better than it found it, judged against these concrete standards rather
+than taste. A task that regresses any of them is not done.
+
+**Palette.** No pure black and no pure white anywhere. The table is felt green,
+the surround is a dark neutral, and text is off-white. Use these exact values so
+the look stays coherent across tasks:
+
+| Token | RGBA (0-1) | Use |
+|---|---|---|
+| `FeltGreen` | `0.086, 0.294, 0.180, 1` | table surface |
+| `FeltShadow` | `0.043, 0.157, 0.098, 1` | table edge / vignette |
+| `Surround` | `0.078, 0.086, 0.094, 1` | background behind the table |
+| `PanelDark` | `0.118, 0.133, 0.145, 0.902` | HUD panels, log backing |
+| `TextPrimary` | `0.949, 0.957, 0.945, 1` | balance, button labels |
+| `TextMuted` | `0.639, 0.678, 0.655, 1` | log lines, secondary text |
+| `Accent` | `0.847, 0.706, 0.325, 1` | chip/gold highlights, active state |
+| `Danger` | `0.788, 0.267, 0.243, 1` | bust, loss |
+| `CardRed` | `0.729, 0.129, 0.129, 1` | hearts, diamonds |
+| `CardInk` | `0.106, 0.106, 0.118, 1` | clubs, spades, card border |
+| `CardFace` | `0.976, 0.973, 0.957, 1` | card face |
+
+**Typography.** One type scale, not arbitrary sizes: 34 / 24 / 18 / 14. Balance
+at 34, button labels at 18, log at 14. Never scale text by changing a
+RectTransform — set `fontSize`.
+
+**Buttons.** A disabled button must be visibly, unmistakably disabled — not merely
+slightly dimmer. Use `ColorBlock` with a distinct `disabledColor` at roughly 35%
+alpha plus a muted label, and a `highlightedColor` so hover reads. Minimum touch
+target 48×48 px (this ships to a phone). Rounded corners via a sprite, not a bare
+`Image`, or it reads as a programmer placeholder.
+
+**Layout.** Anchor to screen edges, never hardcode positions that assume 1280×720.
+Buttons sit in a `HorizontalLayoutGroup` with real spacing (12px) and padding
+(16px), so the row survives a different aspect ratio. Respect `Screen.safeArea`.
+
+**Motion.** Nothing teleports. Any card that changes position moves over at least
+0.18s with easing. Reuse `Easing`/`Tween` — do not hand-roll a lerp.
+
+**Readability check.** Every task that changes visuals ends with a
+`capture_game_view` that the implementer actually looks at, and the report states
+in one sentence what it shows. "It compiles" is not visual verification.
+
 ## Global Constraints
 
 - Unity `6000.3.22f1`, URP 17.3.0, C# 9, .NET Standard 2.1.
@@ -1619,7 +1664,28 @@ unity command editor_stop
 unity command delete_asset --asset Assets/_shot.png --confirm true
 ```
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Bring the HUD up to the Visual Quality Bar**
+
+Task 1's HUD was placeholder. Rework `BlackjackBootstrap.BuildUi` against the
+Visual Quality Bar section at the top of this plan:
+
+- Apply the palette tokens. Add a `PanelDark` backing `Image` behind the log and
+  behind the balance so text never sits directly on the felt.
+- Apply the 34 / 24 / 18 / 14 type scale.
+- Replace the manual `x += width + gap` button placement with a
+  `HorizontalLayoutGroup` on a bottom-anchored bar (12px spacing, 16px padding,
+  child height 56, `childForceExpandWidth = false`).
+- Give every `Button` a `ColorBlock`: normal `PanelDark`, highlighted lifted ~15%,
+  pressed darkened ~10%, disabled at 35% alpha. Mute the label colour when
+  disabled — `ActionBarView` already sets `interactable`, so drive the label
+  colour from that same flag.
+- Anchor the balance top-left and the log below it with `Screen.safeArea` respected.
+- Fix the doubled/overlapping render on the balance text observed in Task 1's
+  capture: `BuildUi` writes `_status.text` directly AND `WalletView.Update` writes
+  it, so establish a single writer — let `WalletView` own that Text entirely and
+  delete the assignment in `BuildUi`.
+
+- [ ] **Step 5: Commit**
 
 ```bash
 git add Assets

@@ -126,6 +126,37 @@ namespace HouseRules.Blackjack
             AdvanceTurn();
         }
 
+        private void ApplyInsurance(bool taken)
+        {
+            if (taken)
+            {
+                foreach (Box box in _boxes)
+                {
+                    if (!box.IsActive)
+                    {
+                        continue;
+                    }
+
+                    long premium = box.InitialBet / 2;
+                    _wallet.Debit(premium);
+                    box.SetInsuranceBet(premium);
+                    Emit(new InsuranceTaken(box.Index, premium));
+                }
+            }
+            else
+            {
+                Emit(new InsuranceDeclined());
+            }
+
+            if (DealerHasBlackjack)
+            {
+                RevealAndSettleDealerBlackjack();
+                return;
+            }
+
+            BeginPlayerTurn();
+        }
+
         private void AdvanceTurn()
         {
             if (AdvanceToNextPlayableHand())

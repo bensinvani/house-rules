@@ -20,6 +20,9 @@ namespace HouseRules.Blackjack
                 PlayerAction.DeclineInsurance
             });
 
+        private static readonly IReadOnlyList<PlayerAction> DeclineInsuranceOnly =
+            Array.AsReadOnly(new[] { PlayerAction.DeclineInsurance });
+
         /// <summary>
         /// Everything the player may legally do right now. All rule knowledge about
         /// permitted actions lives here — consumers render from this list and nothing else.
@@ -30,7 +33,13 @@ namespace HouseRules.Blackjack
             {
                 if (State == RoundState.Insurance)
                 {
-                    return InsuranceActions;
+                    long cost = TotalInsuranceCost();
+                    if (cost > 0 && _wallet.CanAfford(cost))
+                    {
+                        return InsuranceActions;
+                    }
+
+                    return DeclineInsuranceOnly;
                 }
 
                 if (State != RoundState.PlayerTurn)
@@ -82,6 +91,20 @@ namespace HouseRules.Blackjack
 
                 return actions;
             }
+        }
+
+        private long TotalInsuranceCost()
+        {
+            long total = 0;
+            foreach (Box box in _boxes)
+            {
+                if (box.IsActive)
+                {
+                    total += box.InitialBet / 2;
+                }
+            }
+
+            return total;
         }
     }
 }

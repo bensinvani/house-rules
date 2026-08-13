@@ -12,7 +12,5 @@ namespace HouseRules.Blackjack
         private void RevealAndSettleDealerBlackjack() => SetState(RoundState.Complete);
 
         private void BeginDealerTurn() => SetState(RoundState.DealerTurn);
-
-        private void ApplyInsurance(bool taken) => throw new System.NotImplementedException();
     }
 }

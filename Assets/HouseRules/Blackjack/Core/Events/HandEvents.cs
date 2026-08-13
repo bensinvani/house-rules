@@ -51,4 +51,20 @@ namespace HouseRules.Blackjack
         public int HandIndex { get; }
         public int NewHandIndex { get; }
     }
+
+    public sealed class InsuranceTaken : GameEvent
+    {
+        public InsuranceTaken(int boxIndex, long amount)
+        {
+            BoxIndex = boxIndex;
+            Amount = amount;
+        }
+
+        public int BoxIndex { get; }
+        public long Amount { get; }
+    }
+
+    public sealed class InsuranceDeclined : GameEvent
+    {
+    }
 }

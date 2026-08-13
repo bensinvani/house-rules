@@ -2082,17 +2082,6 @@ namespace HouseRules.Blackjack.Tests
         }
 
         [Test]
-        public void AfterHitting_DoubleIsNoLongerLegal()
-        {
-            var round = Dealt(C(Rank.Five), C(Rank.Six), C(Rank.Four), C(Rank.Four), C(Rank.Two));
-
-            round.Apply(PlayerAction.Hit);
-
-            CollectionAssert.Contains(round.LegalActions, PlayerAction.Hit);
-            CollectionAssert.DoesNotContain(round.LegalActions, PlayerAction.Double);
-        }
-
-        [Test]
         public void Split_IsIllegal_WhenWalletCannotCoverSecondWager()
         {
             var round = new Round(
@@ -2154,7 +2143,7 @@ Poll until `completed`, then:
 unity command run_tests --mode editor --filter LegalActionsTests
 ```
 
-Expected: FAIL — `LegalActions` and `Apply` do not exist.
+Expected: FAIL — `LegalActions` does not exist.
 
 - [ ] **Step 3: Write the legality partial**
 
@@ -2242,7 +2231,7 @@ namespace HouseRules.Blackjack
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it still fails on `Apply` only**
+- [ ] **Step 4: Run the test to verify it passes**
 
 ```bash
 unity command recompile
@@ -2254,7 +2243,7 @@ Poll until `completed`, then:
 unity command run_tests --mode editor --filter LegalActionsTests
 ```
 
-Expected: FAIL — only `AfterHitting_DoubleIsNoLongerLegal` fails, because `Apply` does not exist yet. Task 8 adds it. All other tests in this class should pass.
+Expected: PASS, 7 tests. Every test in this class must be green — this task commits no failing tests.
 
 - [ ] **Step 5: Commit**
 
@@ -2390,9 +2379,58 @@ namespace HouseRules.Blackjack.Tests
             Assert.AreEqual(RoundState.PlayerTurn, round.State);
             Assert.IsFalse(round.Boxes[0].Hands[0].IsClosed);
         }
+
+        [Test]
+        public void AfterHitting_DoubleIsNoLongerLegal()
+        {
+            var round = Dealt(new Wallet(1000),
+                C(Rank.Five), C(Rank.Six), C(Rank.Four), C(Rank.Four), C(Rank.Two));
+
+            round.Apply(PlayerAction.Hit);
+
+            CollectionAssert.Contains(round.LegalActions, PlayerAction.Hit);
+            CollectionAssert.DoesNotContain(round.LegalActions, PlayerAction.Double);
+        }
+
+        [Test]
+        public void NaturalBlackjack_AutoClosesAndIsNeverOfferedActions()
+        {
+            // Player is dealt A,K — a natural. It stands automatically, so with no
+            // other live hand the round goes straight to the dealer.
+            var round = Dealt(new Wallet(1000),
+                C(Rank.Ace), C(Rank.Nine), C(Rank.King), C(Rank.Seven));
+
+            Assert.IsTrue(round.Boxes[0].Hands[0].IsBlackjack);
+            Assert.IsTrue(round.Boxes[0].Hands[0].IsClosed);
+            Assert.AreNotEqual(RoundState.PlayerTurn, round.State);
+        }
+
+        [Test]
+        public void NaturalOnOneBox_DoesNotSkipTheOtherBox()
+        {
+            var round = new Round(
+                BlackjackRules.Standard,
+                new StackedShoe(
+                    C(Rank.Ace),   // box0 c1
+                    C(Rank.Ten),   // box1 c1
+                    C(Rank.Nine),  // dealer up
+                    C(Rank.King),  // box0 c2  -> natural
+                    C(Rank.Six),   // box1 c2  -> 16
+                    C(Rank.Seven)),// dealer hole
+                new Wallet(1000));
+
+            round.PlaceBet(0, 10);
+            round.PlaceBet(1, 10);
+            round.Deal();
+
+            Assert.AreEqual(RoundState.PlayerTurn, round.State);
+            Assert.AreEqual(1, round.CurrentBoxIndex, "Play should skip the natural and land on box 1.");
+        }
     }
 }
 ```
+
+`CollectionAssert` needs `using NUnit.Framework;`, which the file already has.
 
 Hitting to exactly 21 deliberately does not auto-stand. Auto-standing is a UI convenience, and putting it in the engine would make the state machine's behaviour depend on a presentation preference.
 
@@ -2558,6 +2596,13 @@ namespace HouseRules.Blackjack
                         continue;
                     }
 
+                    // A natural stands automatically — the player never acts on it.
+                    if (hand.IsBlackjack)
+                    {
+                        hand.Close();
+                        continue;
+                    }
+
                     CurrentBoxIndex = b;
                     CurrentHandIndex = h;
 
@@ -2621,13 +2666,13 @@ Poll until `completed`, then:
 unity command run_tests --mode editor --filter PlayerActionTests
 ```
 
-Expected: PASS, 7 tests.
+Expected: PASS, 10 tests.
 
 ```bash
 unity command run_tests --mode editor --filter LegalActionsTests
 ```
 
-Expected: PASS, 8 tests — the `Apply`-dependent test from Task 7 now passes too.
+Expected: PASS, 7 tests — still green, unchanged by this task.
 
 - [ ] **Step 7: Commit**
 
@@ -2763,7 +2808,7 @@ Poll until `completed`, then:
 unity command run_tests --mode editor --filter PlayerActionTests
 ```
 
-Expected: PASS, 9 tests.
+Expected: PASS, 12 tests.
 
 - [ ] **Step 6: Commit**
 
@@ -3342,9 +3387,10 @@ namespace HouseRules.Blackjack.Tests
         [Test]
         public void Dealer_StandsOnSoft17_UnderStandardRules()
         {
-            // dealer ace + 6 = soft 17, must stand.
+            // Dealer 6 up, ace in the hole = soft 17, must stand.
+            // The ace must be the HOLE card: an ace upcard diverts to the Insurance state.
             var round = PlayerStands(
-                C(Rank.Ten), C(Rank.Ace), C(Rank.King), C(Rank.Six));
+                C(Rank.Ten), C(Rank.Six), C(Rank.King), C(Rank.Ace));
 
             Assert.AreEqual(17, round.DealerHand.Value.Total);
             Assert.IsTrue(round.DealerHand.Value.IsSoft);
@@ -3368,9 +3414,10 @@ namespace HouseRules.Blackjack.Tests
                 betIncrement: 2,
                 maxBoxes: 3);
 
+            // Dealer 6 up, ace in the hole = soft 17, hits under H17, draws a 2 for 19.
             var round = new Round(
                 rules,
-                new StackedShoe(C(Rank.Ten), C(Rank.Ace), C(Rank.King), C(Rank.Six), C(Rank.Two)),
+                new StackedShoe(C(Rank.Ten), C(Rank.Six), C(Rank.King), C(Rank.Ace), C(Rank.Two)),
                 new Wallet(1000));
 
             round.PlaceBet(0, 10);
@@ -3656,7 +3703,7 @@ namespace HouseRules.Blackjack.Tests
         }
 
         [Test]
-        public void Bust_LosesEvenIfDealerAlsoBusts()
+        public void Bust_LosesRegardlessOfDealerHand()
         {
             var wallet = new Wallet(1000);
             var round = PlayOut(wallet, PlayerAction.Hit,
@@ -3686,8 +3733,9 @@ namespace HouseRules.Blackjack.Tests
         public void BlackjackVersusDealerBlackjack_Pushes()
         {
             var wallet = new Wallet(1000);
+            // Dealer's ace must be the hole card — an ace upcard diverts to Insurance.
             var round = PlayOut(wallet, null,
-                C(Rank.Ace), C(Rank.Ace), C(Rank.King), C(Rank.King));
+                C(Rank.Ace), C(Rank.King), C(Rank.King), C(Rank.Ace));
 
             Settlement s = round.Settlements.Single();
             Assert.AreEqual(HandOutcome.Push, s.Outcome);
@@ -3695,11 +3743,12 @@ namespace HouseRules.Blackjack.Tests
         }
 
         [Test]
-        public void DealerBlackjack_BeatsPlayerTwentyOne()
+        public void DealerBlackjack_BeatsPlayerTwenty()
         {
             var wallet = new Wallet(1000);
+            // Player 20 (not a natural) against a dealer natural. Ace in the hole.
             var round = PlayOut(wallet, null,
-                C(Rank.Ten), C(Rank.Ace), C(Rank.Ten), C(Rank.King));
+                C(Rank.Ten), C(Rank.King), C(Rank.Ten), C(Rank.Ace));
 
             Settlement s = round.Settlements.Single();
             Assert.AreEqual(HandOutcome.Lose, s.Outcome);

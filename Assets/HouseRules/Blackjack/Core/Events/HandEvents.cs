@@ -113,4 +113,15 @@ namespace HouseRules.Blackjack
         /// <summary>Net change from the insurance side bet: +2x premium on a dealer natural, -premium otherwise.</summary>
         public long Delta { get; }
     }
+
+    public sealed class RoundAbandoned : GameEvent
+    {
+        public RoundAbandoned(long refunded)
+        {
+            Refunded = refunded;
+        }
+
+        /// <summary>Total chips returned to the wallet: every hand's wager plus every insurance premium.</summary>
+        public long Refunded { get; }
+    }
 }

@@ -77,4 +77,24 @@ namespace HouseRules.Blackjack
 
         public Card HoleCard { get; }
     }
+
+    public sealed class HandSettled : GameEvent
+    {
+        public HandSettled(Settlement settlement)
+        {
+            Settlement = settlement;
+        }
+
+        public Settlement Settlement { get; }
+    }
+
+    public sealed class RoundSettled : GameEvent
+    {
+        public RoundSettled(long totalDelta)
+        {
+            TotalDelta = totalDelta;
+        }
+
+        public long TotalDelta { get; }
+    }
 }

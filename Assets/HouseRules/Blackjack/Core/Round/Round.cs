@@ -9,6 +9,7 @@ namespace HouseRules.Blackjack
         private readonly IShoe _shoe;
         private readonly Wallet _wallet;
         private readonly List<Box> _boxes = new List<Box>();
+        private readonly List<GameEvent> _events = new List<GameEvent>();
 
         public Round(BlackjackRules rules, IShoe shoe, Wallet wallet)
         {
@@ -81,5 +82,7 @@ namespace HouseRules.Blackjack
         }
 
         private void SetState(RoundState state) => State = state;
+
+        private void Emit(GameEvent gameEvent) => _events.Add(gameEvent);
     }
 }

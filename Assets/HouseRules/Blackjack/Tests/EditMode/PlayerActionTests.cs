@@ -170,7 +170,9 @@ namespace HouseRules.Blackjack.Tests
             Assert.IsTrue(hand.IsDoubled);
             Assert.AreEqual(3, hand.Cards.Count);
             Assert.IsTrue(hand.IsClosed);
-            Assert.AreEqual(980, wallet.Balance);
+            // Player 20 (6+5+9) vs. dealer, who draws filler Fives from 10 up to a
+            // hard 20 -- a push, so the doubled 20-chip wager is credited back in full.
+            Assert.AreEqual(1000, wallet.Balance);
             Assert.AreEqual(RoundState.Complete, round.State);
         }
 

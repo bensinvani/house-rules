@@ -93,5 +93,40 @@ namespace HouseRules.Blackjack.Tests
             Assert.AreEqual(3, rules.MaxBoxes);
         }
 
+        [Test]
+        public void Construction_OddMinimumBet_Throws()
+        {
+            Assert.Throws<ArgumentException>(() => new BlackjackRules(
+                deckCount: 6,
+                dealerHitsSoft17: false,
+                doubleAfterSplit: true,
+                maxSplitsPerBox: 3,
+                resplitAces: false,
+                hitSplitAces: false,
+                surrenderAllowed: false,
+                insuranceOffered: true,
+                penetration: 0.75,
+                minimumBet: 5,
+                betIncrement: 2,
+                maxBoxes: 3));
+        }
+
+        [Test]
+        public void Construction_OddBetIncrement_Throws()
+        {
+            Assert.Throws<ArgumentException>(() => new BlackjackRules(
+                deckCount: 6,
+                dealerHitsSoft17: false,
+                doubleAfterSplit: true,
+                maxSplitsPerBox: 3,
+                resplitAces: false,
+                hitSplitAces: false,
+                surrenderAllowed: false,
+                insuranceOffered: true,
+                penetration: 0.75,
+                minimumBet: 2,
+                betIncrement: 1,
+                maxBoxes: 3));
+        }
     }
 }

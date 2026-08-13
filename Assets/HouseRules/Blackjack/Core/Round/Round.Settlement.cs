@@ -70,11 +70,15 @@ namespace HouseRules.Blackjack
             {
                 // Pays 2:1 — the premium plus twice the premium in winnings.
                 _wallet.Credit(box.InsuranceBet * 3);
-                TotalDelta += box.InsuranceBet * 2;
+                long delta = box.InsuranceBet * 2;
+                TotalDelta += delta;
+                Emit(new InsuranceSettled(box.Index, dealerHadBlackjack: true, delta));
             }
             else
             {
-                TotalDelta -= box.InsuranceBet;
+                long delta = -box.InsuranceBet;
+                TotalDelta += delta;
+                Emit(new InsuranceSettled(box.Index, dealerHadBlackjack: false, delta));
             }
         }
 

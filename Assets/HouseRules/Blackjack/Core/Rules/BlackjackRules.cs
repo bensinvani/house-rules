@@ -1,3 +1,5 @@
+using System;
+
 namespace HouseRules.Blackjack
 {
     /// <summary>
@@ -33,6 +35,20 @@ namespace HouseRules.Blackjack
             long betIncrement,
             int maxBoxes)
         {
+            if (minimumBet <= 0 || minimumBet % 2 != 0)
+            {
+                throw new ArgumentException(
+                    "Minimum bet must be positive and even so a 3:2 blackjack payout is exact.",
+                    nameof(minimumBet));
+            }
+
+            if (betIncrement <= 0 || betIncrement % 2 != 0)
+            {
+                throw new ArgumentException(
+                    "Bet increment must be positive and even so a 3:2 blackjack payout is exact.",
+                    nameof(betIncrement));
+            }
+
             DeckCount = deckCount;
             DealerHitsSoft17 = dealerHitsSoft17;
             DoubleAfterSplit = doubleAfterSplit;

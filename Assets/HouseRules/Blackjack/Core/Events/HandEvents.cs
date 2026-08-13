@@ -97,4 +97,20 @@ namespace HouseRules.Blackjack
 
         public long TotalDelta { get; }
     }
+
+    public sealed class InsuranceSettled : GameEvent
+    {
+        public InsuranceSettled(int boxIndex, bool dealerHadBlackjack, long delta)
+        {
+            BoxIndex = boxIndex;
+            DealerHadBlackjack = dealerHadBlackjack;
+            Delta = delta;
+        }
+
+        public int BoxIndex { get; }
+        public bool DealerHadBlackjack { get; }
+
+        /// <summary>Net change from the insurance side bet: +2x premium on a dealer natural, -premium otherwise.</summary>
+        public long Delta { get; }
+    }
 }

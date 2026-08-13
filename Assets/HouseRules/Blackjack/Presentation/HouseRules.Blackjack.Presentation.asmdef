@@ -2,7 +2,8 @@
     "name": "HouseRules.Blackjack.Presentation",
     "rootNamespace": "HouseRules.Blackjack.Presentation",
     "references": [
-        "HouseRules.Blackjack"
+        "HouseRules.Blackjack",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

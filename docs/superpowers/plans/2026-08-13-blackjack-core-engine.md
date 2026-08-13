@@ -904,10 +904,23 @@ namespace HouseRules.Blackjack.Tests
         {
         }
 
-        public StackedShoe(Card filler, params Card[] scripted)
+        private StackedShoe(Card filler, Card[] scripted)
         {
             _scripted = new List<Card>(scripted ?? Array.Empty<Card>());
             _filler = filler;
+        }
+
+        /// <summary>
+        /// Script with an explicit filler card.
+        /// This is a named factory, not a second public constructor, on purpose:
+        /// a public `StackedShoe(Card filler, params Card[] scripted)` would make
+        /// `new StackedShoe(a, b)` bind to it — silently taking `a` as the filler
+        /// when the caller meant a two-card script. A named factory cannot be
+        /// picked by accident.
+        /// </summary>
+        public static StackedShoe WithFiller(Card filler, params Card[] scripted)
+        {
+            return new StackedShoe(filler, scripted);
         }
 
         public int Remaining => int.MaxValue;
@@ -2950,7 +2963,7 @@ namespace HouseRules.Blackjack.Tests
 
             var round = new Round(
                 BlackjackRules.Standard,
-                new StackedShoe(C(Rank.Eight), script),
+                StackedShoe.WithFiller(C(Rank.Eight), script),
                 new Wallet(1000));
 
             round.PlaceBet(0, 10);

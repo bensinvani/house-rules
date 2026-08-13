@@ -37,4 +37,18 @@ namespace HouseRules.Blackjack
         public int HandIndex { get; }
         public long NewWager { get; }
     }
+
+    public sealed class HandSplit : GameEvent
+    {
+        public HandSplit(int boxIndex, int handIndex, int newHandIndex)
+        {
+            BoxIndex = boxIndex;
+            HandIndex = handIndex;
+            NewHandIndex = newHandIndex;
+        }
+
+        public int BoxIndex { get; }
+        public int HandIndex { get; }
+        public int NewHandIndex { get; }
+    }
 }

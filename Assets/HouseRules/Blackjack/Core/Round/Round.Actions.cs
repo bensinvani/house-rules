@@ -95,6 +95,37 @@ namespace HouseRules.Blackjack
             AdvanceTurn();
         }
 
+        private void ApplySplit()
+        {
+            Box box = CurrentBox;
+            Hand original = CurrentHand;
+            int handIndex = CurrentHandIndex;
+
+            _wallet.Debit(original.Wager);
+
+            // Move the second card of the original hand into a new hand beside it.
+            Card moved = original.Cards[1];
+            var replacement = new Hand(original.Wager, isFromSplit: true);
+            replacement.Add(original.Cards[0]);
+
+            var created = new Hand(original.Wager, isFromSplit: true);
+            created.Add(moved);
+
+            box.ReplaceHand(handIndex, replacement);
+            box.InsertHandAfter(handIndex, created);
+
+            Emit(new HandSplit(CurrentBoxIndex, handIndex, handIndex + 1));
+
+            // One card to each of the two resulting hands.
+            DealTo(CurrentBoxIndex, handIndex, replacement, faceUp: true);
+            DealTo(CurrentBoxIndex, handIndex + 1, created, faceUp: true);
+
+            // Re-resolve from the start of the walk. AdvanceToNextPlayableHand scans
+            // boxes in order and lands on the first hand that still has legal actions,
+            // so a split ace is closed automatically and play moves past it.
+            AdvanceTurn();
+        }
+
         private void AdvanceTurn()
         {
             if (AdvanceToNextPlayableHand())

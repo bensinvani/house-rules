@@ -36,5 +36,7 @@ namespace HouseRules.Blackjack
         public void AddHand(Hand hand) => _hands.Add(hand);
 
         public void InsertHandAfter(int index, Hand hand) => _hands.Insert(index + 1, hand);
+
+        public void ReplaceHand(int index, Hand hand) => _hands[index] = hand;
     }
 }

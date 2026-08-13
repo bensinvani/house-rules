@@ -28,26 +28,7 @@ namespace HouseRules.Blackjack.Presentation
         public RoundState State => CurrentRound?.State ?? RoundState.Complete;
 
         /// <summary>True while the sequencer is still playing events back.</summary>
-        public bool IsBusy
-        {
-            get
-            {
-                bool busy = _sequencer != null && !_sequencer.IsIdle;
-
-                // A caller that polls IsBusy in its own coroutine can observe the
-                // sequencer going idle in the very frame EventSequencer's playback
-                // coroutine finishes — one frame before this component's own Update()
-                // would next run. Checking completion here, at the read that drives
-                // that polling, keeps RoundCompleted from lagging a frame behind
-                // whoever is actually watching for idle.
-                if (!busy)
-                {
-                    TryAnnounceCompletion();
-                }
-
-                return busy;
-            }
-        }
+        public bool IsBusy => _sequencer != null && !_sequencer.IsIdle;
 
         public bool CanAcceptInput => CurrentRound != null && !IsBusy;
 
@@ -63,7 +44,26 @@ namespace HouseRules.Blackjack.Presentation
             _rules = rules;
             _shoe = shoe ?? throw new ArgumentNullException(nameof(shoe));
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
+
+            if (_sequencer != null)
+            {
+                _sequencer.Idle -= TryAnnounceCompletion;
+            }
+
             _sequencer = sequencer;
+
+            if (_sequencer != null)
+            {
+                _sequencer.Idle += TryAnnounceCompletion;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_sequencer != null)
+            {
+                _sequencer.Idle -= TryAnnounceCompletion;
+            }
         }
 
         public void BeginRound()
@@ -144,10 +144,11 @@ namespace HouseRules.Blackjack.Presentation
 
         private void Update()
         {
-            // Backstop for a caller that never reads IsBusy directly (e.g. only
-            // reacts to the RoundCompleted event). IsBusy's getter already handles
-            // the common case of a caller polling it in a coroutine.
-            if (!IsBusy)
+            // Backstop for a round that reaches Complete without ever draining events
+            // (e.g. Abandon with nothing queued): Enqueue is never called, no pump runs,
+            // and EventSequencer.Idle never fires. This covers that case.
+            if (!_completionAnnounced && CurrentRound != null &&
+                CurrentRound.State == RoundState.Complete && !IsBusy)
             {
                 TryAnnounceCompletion();
             }

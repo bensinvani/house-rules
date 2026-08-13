@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using HouseRules.Blackjack;
@@ -19,6 +20,13 @@ namespace HouseRules.Blackjack.Presentation
         public bool IsIdle => _pending.Count == 0 && _pump == null;
 
         public int PendingCount => _pending.Count;
+
+        /// <summary>
+        /// Raised the moment the queue drains and the last presentation finishes.
+        /// This is the true completion signal — consumers subscribe rather than polling,
+        /// so no property getter has to carry a side effect.
+        /// </summary>
+        public event Action Idle;
 
         public void SetPresenter(IEventPresenter presenter) => _presenter = presenter;
 
@@ -55,6 +63,7 @@ namespace HouseRules.Blackjack.Presentation
             }
 
             _pump = null;
+            Idle?.Invoke();
         }
 
         private void OnDisable()

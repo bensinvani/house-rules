@@ -11,6 +11,6 @@ namespace HouseRules.Blackjack
 
         private void RevealAndSettleDealerBlackjack() => SetState(RoundState.Complete);
 
-        private void BeginDealerTurn() => SetState(RoundState.DealerTurn);
+        private void Settle() => SetState(RoundState.Complete);
     }
 }

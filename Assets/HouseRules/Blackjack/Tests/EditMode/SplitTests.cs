@@ -94,8 +94,9 @@ namespace HouseRules.Blackjack.Tests
 
             round.Apply(PlayerAction.Split);
 
-            // Both split aces auto-close, so play passes straight to the dealer.
-            Assert.AreEqual(RoundState.DealerTurn, round.State);
+            // Both split aces auto-close, so play passes straight to the dealer,
+            // which plays out and the round completes.
+            Assert.AreEqual(RoundState.Complete, round.State);
             Assert.AreEqual(2, round.Boxes[0].Hands[0].Cards.Count);
             Assert.AreEqual(2, round.Boxes[0].Hands[1].Cards.Count);
             Assert.IsTrue(round.Boxes[0].Hands[0].IsClosed);

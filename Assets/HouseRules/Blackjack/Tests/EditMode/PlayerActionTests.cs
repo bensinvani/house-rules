@@ -37,7 +37,7 @@ namespace HouseRules.Blackjack.Tests
 
             Assert.IsTrue(round.Boxes[0].Hands[0].IsBust);
             Assert.IsTrue(round.Boxes[0].Hands[0].IsClosed);
-            Assert.AreEqual(RoundState.DealerTurn, round.State);
+            Assert.AreEqual(RoundState.Complete, round.State);
         }
 
         [Test]
@@ -49,7 +49,7 @@ namespace HouseRules.Blackjack.Tests
             round.Apply(PlayerAction.Stand);
 
             Assert.IsTrue(round.Boxes[0].Hands[0].IsClosed);
-            Assert.AreEqual(RoundState.DealerTurn, round.State);
+            Assert.AreEqual(RoundState.Complete, round.State);
         }
 
         [Test]
@@ -75,7 +75,7 @@ namespace HouseRules.Blackjack.Tests
             round.Apply(PlayerAction.Stand);
             Assert.AreEqual(2, round.CurrentBoxIndex);
             round.Apply(PlayerAction.Stand);
-            Assert.AreEqual(RoundState.DealerTurn, round.State);
+            Assert.AreEqual(RoundState.Complete, round.State);
         }
 
         [Test]
@@ -171,7 +171,7 @@ namespace HouseRules.Blackjack.Tests
             Assert.AreEqual(3, hand.Cards.Count);
             Assert.IsTrue(hand.IsClosed);
             Assert.AreEqual(980, wallet.Balance);
-            Assert.AreEqual(RoundState.DealerTurn, round.State);
+            Assert.AreEqual(RoundState.Complete, round.State);
         }
 
         [Test]

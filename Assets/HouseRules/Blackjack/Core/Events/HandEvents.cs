@@ -67,4 +67,14 @@ namespace HouseRules.Blackjack
     public sealed class InsuranceDeclined : GameEvent
     {
     }
+
+    public sealed class DealerRevealed : GameEvent
+    {
+        public DealerRevealed(Card holeCard)
+        {
+            HoleCard = holeCard;
+        }
+
+        public Card HoleCard { get; }
+    }
 }

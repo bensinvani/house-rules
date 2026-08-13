@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(unity command:*)",
+      "Bash(unity pipeline:*)",
+      "Bash(unity editors:*)",
+      "PowerShell(unity command:*)",
+      "PowerShell(unity pipeline:*)",
+      "PowerShell(unity editors:*)"
+    ]
+  }
+}

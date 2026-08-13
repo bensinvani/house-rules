@@ -84,5 +84,16 @@ namespace HouseRules.Blackjack
         private void SetState(RoundState state) => State = state;
 
         private void Emit(GameEvent gameEvent) => _events.Add(gameEvent);
+
+        /// <summary>
+        /// Returns everything emitted since the last call and clears the buffer.
+        /// The presentation layer drains this and plays the events back as animation.
+        /// </summary>
+        public IReadOnlyList<GameEvent> DrainEvents()
+        {
+            var drained = _events.ToArray();
+            _events.Clear();
+            return drained;
+        }
     }
 }

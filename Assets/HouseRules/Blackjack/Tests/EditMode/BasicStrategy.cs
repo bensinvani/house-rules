@@ -121,6 +121,14 @@ namespace HouseRules.Blackjack.Tests
                 case 19:
                     return PlayerAction.Stand;
                 case 18:
+                    // S17 soft 18: stand vs 2, double-else-stand vs 3-6,
+                    // stand vs 7-8, hit vs 9-A. Standing vs 2 is the S17/H17
+                    // difference — under H17 this cell doubles instead.
+                    if (up == 0)
+                    {
+                        return PlayerAction.Stand;
+                    }
+
                     if (up <= 4)
                     {
                         return DoubleOr(PlayerAction.Stand, legal);

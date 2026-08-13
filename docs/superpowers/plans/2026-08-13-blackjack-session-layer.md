@@ -47,7 +47,23 @@ unity command recompile_status
 Only then run tests. A stale assembly produces misleading pass/fail results.
 
 - EditMode: `unity command run_tests --mode editor --filter <TestClass>`
-- PlayMode: `unity command run_tests --mode playmode --filter <TestClass>`
+- PlayMode: **must be run asynchronously.** A synchronous
+  `run_tests --mode playmode` returns `Total: 0` and reports success — it does
+  not run anything, because PlayMode tests need play-mode entry that cannot
+  complete inside a blocking call. Use:
+
+  ```bash
+  unity command run_tests --mode playmode --async_tests true --timeout 600
+  ```
+
+  then poll until `status` is `completed`:
+
+  ```bash
+  unity command test_status
+  ```
+
+  Treat a PlayMode result of `Total: 0` as "did not run", never as "passed".
+  Cross-check the expected count against `unity command list_tests --mode playmode`.
 
 ## The Engine API You Are Building On
 

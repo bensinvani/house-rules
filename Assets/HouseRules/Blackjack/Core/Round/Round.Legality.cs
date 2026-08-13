@@ -1,16 +1,24 @@
+using System;
 using System.Collections.Generic;
 
 namespace HouseRules.Blackjack
 {
     public sealed partial class Round
     {
-        private static readonly PlayerAction[] NoActions = new PlayerAction[0];
+        // Wrapped in ReadOnlyCollection, not returned as bare arrays. A bare
+        // static array handed out as IReadOnlyList is still mutable via a
+        // downcast, and a single stray write would corrupt legality for every
+        // Round in the process. The runtime type enforces what the interface
+        // only suggests.
+        private static readonly IReadOnlyList<PlayerAction> NoActions =
+            Array.AsReadOnly(Array.Empty<PlayerAction>());
 
-        private static readonly PlayerAction[] InsuranceActions =
-        {
-            PlayerAction.TakeInsurance,
-            PlayerAction.DeclineInsurance
-        };
+        private static readonly IReadOnlyList<PlayerAction> InsuranceActions =
+            Array.AsReadOnly(new[]
+            {
+                PlayerAction.TakeInsurance,
+                PlayerAction.DeclineInsurance
+            });
 
         /// <summary>
         /// Everything the player may legally do right now. All rule knowledge about

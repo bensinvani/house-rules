@@ -95,5 +95,130 @@ namespace HouseRules.Blackjack.Tests
             Assert.IsTrue(round.Boxes[2].IsActive);
             Assert.AreEqual(970, wallet.Balance);
         }
+
+        private static Card C(Rank rank) => new Card(rank, Suit.Spades);
+
+        [Test]
+        public void Deal_GivesTwoCardsToEachActiveBoxAndDealer()
+        {
+            var round = NewRound(shoe: new StackedShoe(
+                C(Rank.Ten), C(Rank.Nine),   // box0 first, dealer upcard
+                C(Rank.Seven), C(Rank.Four), // box0 second, dealer hole
+                C(Rank.Two)));
+
+            round.PlaceBet(0, 10);
+            round.Deal();
+
+            Assert.AreEqual(2, round.Boxes[0].Hands[0].Cards.Count);
+            Assert.AreEqual(2, round.DealerHand.Cards.Count);
+        }
+
+        [Test]
+        public void Deal_UsesCasinoOrder_BoxThenDealerThenBoxThenHole()
+        {
+            var round = NewRound(shoe: new StackedShoe(
+                C(Rank.Ten),    // box0 card 1
+                C(Rank.Nine),   // dealer upcard
+                C(Rank.Seven),  // box0 card 2
+                C(Rank.Four))); // dealer hole
+
+            round.PlaceBet(0, 10);
+            round.Deal();
+
+            Assert.AreEqual(C(Rank.Ten), round.Boxes[0].Hands[0].Cards[0]);
+            Assert.AreEqual(C(Rank.Seven), round.Boxes[0].Hands[0].Cards[1]);
+            Assert.AreEqual(C(Rank.Nine), round.DealerHand.Cards[0]);
+            Assert.AreEqual(C(Rank.Four), round.DealerHand.Cards[1]);
+        }
+
+        [Test]
+        public void Deal_SkipsInactiveBoxes()
+        {
+            var round = NewRound(shoe: new StackedShoe(
+                C(Rank.Ten),    // box0 card 1
+                C(Rank.Six),    // box2 card 1
+                C(Rank.Nine),   // dealer upcard
+                C(Rank.Seven),  // box0 card 2
+                C(Rank.Three),  // box2 card 2
+                C(Rank.Four))); // dealer hole
+
+            round.PlaceBet(0, 10);
+            round.PlaceBet(2, 10);
+            round.Deal();
+
+            Assert.AreEqual(2, round.Boxes[0].Hands[0].Cards.Count);
+            Assert.AreEqual(0, round.Boxes[1].Hands.Count);
+            Assert.AreEqual(2, round.Boxes[2].Hands[0].Cards.Count);
+        }
+
+        [Test]
+        public void Deal_WithNoBets_Throws()
+        {
+            var round = NewRound();
+            Assert.Throws<InvalidOperationException>(() => round.Deal());
+        }
+
+        [Test]
+        public void Deal_EntersPlayerTurn_OnOrdinaryUpcard()
+        {
+            var round = NewRound(shoe: new StackedShoe(
+                C(Rank.Ten), C(Rank.Nine), C(Rank.Seven), C(Rank.Four)));
+
+            round.PlaceBet(0, 10);
+            round.Deal();
+
+            Assert.AreEqual(RoundState.PlayerTurn, round.State);
+            Assert.AreEqual(0, round.CurrentBoxIndex);
+            Assert.AreEqual(0, round.CurrentHandIndex);
+        }
+
+        [Test]
+        public void Deal_EntersInsurance_OnAceUpcard()
+        {
+            var round = NewRound(shoe: new StackedShoe(
+                C(Rank.Ten), C(Rank.Ace), C(Rank.Seven), C(Rank.Four)));
+
+            round.PlaceBet(0, 10);
+            round.Deal();
+
+            Assert.AreEqual(RoundState.Insurance, round.State);
+        }
+
+        [Test]
+        public void Deal_GoesStraightToSettlement_WhenDealerPeeksBlackjackOnTen()
+        {
+            var round = NewRound(shoe: new StackedShoe(
+                C(Rank.Ten), C(Rank.King), C(Rank.Seven), C(Rank.Ace)));
+
+            round.PlaceBet(0, 10);
+            round.Deal();
+
+            Assert.IsTrue(round.DealerHasBlackjack);
+            Assert.AreEqual(RoundState.Complete, round.State);
+        }
+
+        [Test]
+        public void Deal_DoesNotPeek_OnLowUpcard()
+        {
+            var round = NewRound(shoe: new StackedShoe(
+                C(Rank.Ten), C(Rank.Six), C(Rank.Seven), C(Rank.Four)));
+
+            round.PlaceBet(0, 10);
+            round.Deal();
+
+            Assert.AreEqual(RoundState.PlayerTurn, round.State);
+        }
+
+        [Test]
+        public void Deal_Twice_Throws()
+        {
+            var round = NewRound(shoe: new StackedShoe(
+                C(Rank.Ten), C(Rank.Nine), C(Rank.Seven), C(Rank.Four)));
+
+            round.PlaceBet(0, 10);
+            round.Deal();
+
+            Assert.Throws<InvalidOperationException>(() => round.Deal());
+        }
     }
 }

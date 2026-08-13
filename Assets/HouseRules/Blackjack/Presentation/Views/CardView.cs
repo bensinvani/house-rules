@@ -10,7 +10,7 @@ namespace HouseRules.Blackjack.Presentation
     /// </summary>
     public sealed class CardView : MonoBehaviour
     {
-        public static readonly Vector3 CardSize = new Vector3(0.63f, 0.02f, 0.88f);
+        public static readonly Vector3 CardSize = new Vector3(0.95f, 0.02f, 1.33f);
 
         private TextMesh _faceText;
         private Renderer _renderer;
@@ -49,7 +49,10 @@ namespace HouseRules.Blackjack.Presentation
             text.anchor = TextAnchor.MiddleCenter;
             text.alignment = TextAlignment.Center;
             text.fontSize = 64;
-            text.characterSize = 0.05f;
+            // characterSize renders in world units independent of CardSize (see the scale
+            // comment above), so it does not grow for free when CardSize does. Scaled up by
+            // the same ~1.51x CardSize grew (0.63->0.95) to keep the glyph filling the face.
+            text.characterSize = 0.075f;
             view._faceText = text;
 
             return view;

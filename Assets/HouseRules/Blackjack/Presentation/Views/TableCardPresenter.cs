@@ -75,6 +75,14 @@ namespace HouseRules.Blackjack.Presentation
         {
             HandView hand = HandFor(dealt.BoxIndex, dealt.HandIndex);
 
+            // The betting-circle marker sits exactly where hand 0's first card lands (that's the
+            // box's betting spot). Hide it the instant that card is dealt, before it starts
+            // occluding the marker unreliably — see TableView.HideBettingMarker's remarks.
+            if (dealt.BoxIndex != CardDealt.DealerBoxIndex && dealt.HandIndex == 0 && hand.Count == 0)
+            {
+                _table.HideBettingMarker(dealt.BoxIndex);
+            }
+
             CardView view = _pool.Rent();
             view.transform.position = _table.ShoePosition;
             view.transform.rotation = Quaternion.identity;

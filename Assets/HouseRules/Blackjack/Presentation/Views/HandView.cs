@@ -6,8 +6,10 @@ namespace HouseRules.Blackjack.Presentation
     /// <summary>Fans cards within one hand. Slot positions are a pure function of index.</summary>
     public sealed class HandView : MonoBehaviour
     {
-        private const float FanStepX = 0.22f;
-        private const float FanStepZ = -0.06f;
+        // Widened alongside CardSize (0.63->0.95, ~1.5x) so each card's rank corner stays
+        // clear of the next card instead of overlapping into a smudge.
+        private const float FanStepX = 0.42f;
+        private const float FanStepZ = -0.09f;
         private const float StackLift = 0.025f;
 
         private readonly List<CardView> _cards = new List<CardView>();

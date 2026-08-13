@@ -9,7 +9,9 @@ namespace HouseRules.Blackjack.Presentation
     /// </summary>
     public sealed class BoxView : MonoBehaviour
     {
-        private const float SplitOffsetX = 1.15f;
+        // Widened alongside CardView.CardSize so split hands stay clearly separated at the
+        // larger card scale.
+        private const float SplitOffsetX = 1.7f;
 
         private readonly List<HandView> _hands = new List<HandView>();
 

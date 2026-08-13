@@ -6,16 +6,19 @@ namespace HouseRules.Blackjack.Presentation
     /// <summary>Scene root: felt, box anchors, the dealer's hand, and the shoe position.</summary>
     public sealed class TableView : MonoBehaviour
     {
-        // BoxView.SplitOffsetX (1.15) is the distance between a box's split hands, and a box
+        // BoxView.SplitOffsetX (1.7) is the distance between a box's split hands, and a box
         // can hold up to 4 of them (three splits), so a split-out box spans up to
-        // SplitOffsetX * 3 = 3.45 units from its anchor. 4.2 gives that a 0.75 margin before
+        // SplitOffsetX * 3 = 5.1 units from its anchor. 5.85 gives that a 0.75 margin before
         // it reaches the neighbouring box's own anchor, so two fully split boxes never overlap.
-        // (Previously 2.6, which is less than 3.45 — a confirmed overlap defect.)
-        private const float BoxSpacingX = 4.2f;
+        // (Previously 4.2, sized for SplitOffsetX = 1.15 before cards were scaled up for
+        // readability; a 4-hand split at this size still ends up tight/touching — accepted
+        // placeholder trade-off, see task-2b-5 report.)
+        private const float BoxSpacingX = 5.85f;
         private const float PlayerRowZ = -1.9f;
         private const float DealerRowZ = 1.7f;
 
         private readonly List<BoxView> _boxes = new List<BoxView>();
+        private readonly List<GameObject> _bettingMarkers = new List<GameObject>();
 
         public HandView DealerHand { get; private set; }
 
@@ -38,7 +41,7 @@ namespace HouseRules.Blackjack.Presentation
                 go.transform.localPosition = boxLocalPosition;
                 _boxes.Add(go.AddComponent<BoxView>());
 
-                CreateBettingCircle(boxLocalPosition, (i + 1).ToString());
+                _bettingMarkers.Add(CreateBettingCircle(boxLocalPosition, (i + 1).ToString()));
             }
 
             var dealerGo = new GameObject("DealerHand");
@@ -51,6 +54,15 @@ namespace HouseRules.Blackjack.Presentation
 
         public BoxView BoxAt(int index) => _boxes[index];
 
+        /// <summary>
+        /// Hides box <paramref name="boxIndex"/>'s betting-spot marker. Its disc and numeral sit
+        /// only ~0.02 units (one CardSize.y) below where an index-0 card lands, which is too fine
+        /// a gap for the depth buffer to resolve reliably at this camera distance — confirmed via
+        /// capture, the marker rendered in front of the dealt card and defaced its rank even when
+        /// nominally "below" it. An explicit hide sidesteps depth precision entirely.
+        /// </summary>
+        public void HideBettingMarker(int boxIndex) => _bettingMarkers[boxIndex].SetActive(false);
+
         public void ClearAll()
         {
             foreach (BoxView box in _boxes)
@@ -59,6 +71,11 @@ namespace HouseRules.Blackjack.Presentation
             }
 
             DealerHand.Clear();
+
+            foreach (GameObject marker in _bettingMarkers)
+            {
+                marker.SetActive(true);
+            }
         }
 
         private void CreateFelt()
@@ -84,20 +101,26 @@ namespace HouseRules.Blackjack.Presentation
         /// <summary>
         /// A flattened disc plus a numeral so the felt reads as a blackjack table with betting
         /// spots even before a single card lands. Purely decorative — it holds no game state.
+        /// Both live under one wrapper GameObject so <see cref="HideBettingMarker"/> can toggle
+        /// them off together once a card covers this spot (see that method's remarks for why).
         /// </summary>
-        private void CreateBettingCircle(Vector3 boxLocalPosition, string numeral)
+        private GameObject CreateBettingCircle(Vector3 boxLocalPosition, string numeral)
         {
+            var marker = new GameObject("BettingMarker");
+            marker.transform.SetParent(transform, false);
+            marker.transform.localPosition = boxLocalPosition;
+
             var disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             disc.name = "BettingCircle";
-            disc.transform.SetParent(transform, false);
-            disc.transform.localPosition = boxLocalPosition + new Vector3(0f, 0.008f, 0f);
+            disc.transform.SetParent(marker.transform, false);
+            disc.transform.localPosition = new Vector3(0f, 0.008f, 0f);
             disc.transform.localScale = new Vector3(0.9f, 0.01f, 0.9f);
             Object.Destroy(disc.GetComponent<CapsuleCollider>());
             disc.GetComponent<Renderer>().material.color = Palette.FeltShadow;
 
             var numeralGo = new GameObject("Numeral");
-            numeralGo.transform.SetParent(transform, false);
-            numeralGo.transform.localPosition = boxLocalPosition + new Vector3(0f, 0.02f, 0f);
+            numeralGo.transform.SetParent(marker.transform, false);
+            numeralGo.transform.localPosition = new Vector3(0f, 0.02f, 0f);
             // Lie flat, readable from the top-down camera, same trick as CardView's face text.
             numeralGo.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
             numeralGo.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
@@ -109,6 +132,8 @@ namespace HouseRules.Blackjack.Presentation
             text.characterSize = 0.5f;
             text.color = Palette.Accent;
             text.text = numeral;
+
+            return marker;
         }
     }
 }

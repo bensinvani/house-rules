@@ -37,6 +37,7 @@ the look stays coherent across tasks:
 | `Accent` | `0.847, 0.706, 0.325, 1` | chip/gold highlights, active state |
 | `Danger` | `0.788, 0.267, 0.243, 1` | bust, loss |
 | `CardRed` | `0.729, 0.129, 0.129, 1` | hearts, diamonds |
+| `CardBack` | `0.145, 0.227, 0.396, 1` | face-down card body |
 | `CardInk` | `0.106, 0.106, 0.118, 1` | clubs, spades, card border |
 | `CardFace` | `0.976, 0.973, 0.957, 1` | card face |
 

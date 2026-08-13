@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace HouseRules.Blackjack
 {
@@ -41,7 +42,7 @@ namespace HouseRules.Blackjack
             }
         }
 
-        private static bool Contains(System.Collections.Generic.IReadOnlyList<PlayerAction> list, PlayerAction action)
+        private static bool Contains(IReadOnlyList<PlayerAction> list, PlayerAction action)
         {
             for (int i = 0; i < list.Count; i++)
             {

@@ -210,5 +210,30 @@ namespace HouseRules.Blackjack.Tests
             long expected = round.Settlements.Sum(s => s.Delta);
             Assert.AreEqual(expected, round.TotalDelta);
         }
+
+        [Test]
+        public void RoundSettled_OnInsuranceRound_TotalIncludesInsuranceDelta()
+        {
+            var wallet = new Wallet(1000);
+            long startingBalance = wallet.Balance;
+            var round = new Round(
+                BlackjackRules.Standard,
+                new StackedShoe(C(Rank.Ten), C(Rank.Ace), C(Rank.King), C(Rank.Four), C(Rank.Five)),
+                wallet);
+
+            round.PlaceBet(0, 10);
+            round.Deal();
+            round.Apply(PlayerAction.TakeInsurance);
+            round.Apply(PlayerAction.Stand);
+
+            long insuranceDelta = round.DrainEvents()
+                .OfType<InsuranceSettled>()
+                .Single()
+                .Delta;
+
+            long expected = round.Settlements.Sum(s => s.Delta) + insuranceDelta;
+            Assert.AreEqual(expected, round.TotalDelta);
+            Assert.AreEqual(startingBalance + round.TotalDelta, wallet.Balance);
+        }
     }
 }

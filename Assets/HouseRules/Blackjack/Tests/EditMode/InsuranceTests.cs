@@ -82,5 +82,30 @@ namespace HouseRules.Blackjack.Tests
             CollectionAssert.DoesNotContain(round.LegalActions, PlayerAction.TakeInsurance);
             CollectionAssert.Contains(round.LegalActions, PlayerAction.DeclineInsurance);
         }
+
+        [Test]
+        public void TakeInsurance_AcrossMultipleBoxes_DebitsTheSumOfEachPremium()
+        {
+            var wallet = new Wallet(1000);
+            var round = new Round(
+                BlackjackRules.Standard,
+                new StackedShoe(
+                    C(Rank.Nine), C(Rank.Eight), C(Rank.Ace),
+                    C(Rank.Seven), C(Rank.Six), C(Rank.Four)),
+                wallet);
+
+            round.PlaceBet(0, 10);
+            round.PlaceBet(1, 20);
+            round.Deal();
+
+            Assert.AreEqual(970, wallet.Balance);
+
+            round.Apply(PlayerAction.TakeInsurance);
+
+            // Premiums are half of each box's initial bet: 5 + 10 = 15.
+            Assert.AreEqual(955, wallet.Balance);
+            Assert.AreEqual(5, round.Boxes[0].InsuranceBet);
+            Assert.AreEqual(10, round.Boxes[1].InsuranceBet);
+        }
     }
 }

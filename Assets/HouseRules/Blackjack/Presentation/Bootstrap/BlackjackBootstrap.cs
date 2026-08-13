@@ -6,13 +6,22 @@ using UnityEngine.UI;
 namespace HouseRules.Blackjack.Presentation
 {
     /// <summary>
-    /// Builds the entire playable rig in code — session, sequencer, presenter, and a
-    /// uGUI layer — so the scene holds exactly one GameObject with one component.
-    /// Hand-authored .unity YAML is the most fragile artifact in a Unity repo; this
-    /// keeps the whole slice reviewable as C#.
+    /// Builds the entire playable rig in code — session, sequencer, table, presenter, and a
+    /// uGUI HUD — so the scene holds exactly one GameObject with one component. Hand-authored
+    /// .unity YAML is the most fragile artifact in a Unity repo; this keeps the whole slice
+    /// reviewable as C#.
     /// </summary>
     public sealed class BlackjackBootstrap : MonoBehaviour
     {
+        // Visual Quality Bar type scale (docs/superpowers/plans/2026-08-13-blackjack-visuals.md):
+        // 34 / 24 / 18 / 14 only. 24 is reserved for a size this HUD doesn't currently need.
+        private const int BalanceFontSize = 34;
+        private const int ButtonFontSize = 18;
+        private const int LogFontSize = 14;
+
+        private const float ButtonMinWidth = 110f;
+        private const float ButtonHeight = 56f;
+
         [SerializeField] private long _betSize = 10;
         [SerializeField] private int _shoeSeed = 20260813;
 
@@ -36,7 +45,20 @@ namespace HouseRules.Blackjack.Presentation
             _actionBar = gameObject.AddComponent<ActionBarView>();
             _walletView = gameObject.AddComponent<WalletView>();
 
-            _sequencer.SetPresenter(_presenter);
+            var tableGo = new GameObject("Table");
+            tableGo.transform.SetParent(transform, false);
+            var table = tableGo.AddComponent<TableView>();
+            table.Build(BlackjackRules.Standard.MaxBoxes);
+
+            var poolGo = new GameObject("CardPool");
+            poolGo.transform.SetParent(transform, false);
+            var pool = poolGo.AddComponent<CardPool>();
+
+            var cardPresenter = gameObject.AddComponent<TableCardPresenter>();
+            cardPresenter.Bind(table, pool, _presenter);
+            _sequencer.SetPresenter(cardPresenter);
+
+            SetupCameraAndLighting();
 
             var shoe = new Shoe(
                 BlackjackRules.Standard.DeckCount,
@@ -76,6 +98,37 @@ namespace HouseRules.Blackjack.Presentation
             _presenter.Clear();
         }
 
+        /// <summary>Required fix: a directional light so the felt and cards aren't unlit, and a
+        /// SolidColor camera in the Surround token so the void behind the table is never pure black.</summary>
+        private void SetupCameraAndLighting()
+        {
+            if (Object.FindAnyObjectByType<Light>() == null)
+            {
+                var lightGo = new GameObject("Directional Light", typeof(Light));
+                var light = lightGo.GetComponent<Light>();
+                light.type = LightType.Directional;
+                light.color = new Color(1f, 0.968f, 0.918f); // soft warm white
+                light.intensity = 1.1f;
+                lightGo.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            }
+
+            Camera camera = Camera.main;
+            if (camera == null)
+            {
+                var camGo = new GameObject("Main Camera", typeof(Camera));
+                camGo.tag = "MainCamera";
+                camera = camGo.GetComponent<Camera>();
+            }
+
+            // Raised and pulled back from Task 5's original framing so all three boxes
+            // (now spaced 4.2 apart, spanning -4.2..+4.2) stay comfortably in frame.
+            camera.transform.position = new Vector3(0f, 10.5f, -6.6f);
+            camera.transform.rotation = Quaternion.Euler(56f, 0f, 0f);
+            camera.fieldOfView = 55f;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = Palette.Surround;
+        }
+
         private void BuildUi(Wallet wallet)
         {
             var canvasGo = new GameObject("Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -90,40 +143,72 @@ namespace HouseRules.Blackjack.Presentation
 
             EnsureEventSystem();
 
-            _status = CreateText(canvasGo.transform, "Status", new Vector2(0f, 1f), new Vector2(20f, -20f),
-                new Vector2(420f, 44f), TextAnchor.UpperLeft, 30);
+            RectTransform safeArea = CreateSafeArea(canvasGo.transform);
+            Sprite roundedSprite = CreateRoundedSprite();
 
-            _log = CreateText(canvasGo.transform, "Log", new Vector2(0f, 1f), new Vector2(20f, -80f),
-                new Vector2(560f, 460f), TextAnchor.UpperLeft, 22);
+            // --- Balance, top-left, on its own PanelDark backing so it never sits on bare felt. ---
+            Image balancePanel = CreatePanel(
+                safeArea, roundedSprite, "BalancePanel",
+                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(20f, -20f), new Vector2(300f, 64f));
 
-            _status.text = $"Chips: {wallet.Balance}";
+            _status = CreateText(
+                balancePanel.transform, "Balance", TextAnchor.MiddleLeft, BalanceFontSize, Palette.TextPrimary);
+            StretchWithPadding(_status.GetComponent<RectTransform>(), 16f);
 
-            float x = 20f;
-            const float ButtonWidth = 132f;
-            const float Gap = 8f;
+            // --- Log, directly below the balance, on its own PanelDark backing. ---
+            Image logPanel = CreatePanel(
+                safeArea, roundedSprite, "LogPanel",
+                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(20f, -96f), new Vector2(460f, 200f));
+
+            _log = CreateText(logPanel.transform, "Log", TextAnchor.UpperLeft, LogFontSize, Palette.TextMuted);
+            StretchWithPadding(_log.GetComponent<RectTransform>(), 12f);
+
+            // --- Bottom action bar: one PanelDark backing bar, laid out by HorizontalLayoutGroup. ---
+            var barGo = new GameObject("ActionBar", typeof(Image), typeof(HorizontalLayoutGroup));
+            barGo.transform.SetParent(safeArea, false);
+
+            var barRect = barGo.GetComponent<RectTransform>();
+            barRect.anchorMin = new Vector2(0f, 0f);
+            barRect.anchorMax = new Vector2(1f, 0f);
+            barRect.pivot = new Vector2(0.5f, 0f);
+            barRect.anchoredPosition = new Vector2(0f, 16f);
+            barRect.sizeDelta = new Vector2(0f, ButtonHeight + 32f);
+
+            var barImage = barGo.GetComponent<Image>();
+            barImage.sprite = roundedSprite;
+            barImage.type = Image.Type.Sliced;
+            barImage.color = Palette.PanelDark;
+
+            var layout = barGo.GetComponent<HorizontalLayoutGroup>();
+            layout.spacing = 12f;
+            layout.padding = new RectOffset(16, 16, 16, 16);
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
 
             _actionBar.RegisterBet(
-                CreateButton(canvasGo.transform, $"Bet {_betSize}", new Vector2(x, 24f), ButtonWidth),
+                CreateButton(barGo.transform, roundedSprite, $"Bet {_betSize}"),
                 () => _session.PlaceBet(FirstFreeBox(), _betSize));
-            x += ButtonWidth + Gap;
 
             _actionBar.RegisterDeal(
-                CreateButton(canvasGo.transform, "Deal", new Vector2(x, 24f), ButtonWidth),
+                CreateButton(barGo.transform, roundedSprite, "Deal"),
                 () => _session.Deal());
-            x += ButtonWidth + Gap;
 
-            RegisterAction(canvasGo.transform, PlayerAction.Hit, "Hit", ref x, ButtonWidth, Gap);
-            RegisterAction(canvasGo.transform, PlayerAction.Stand, "Stand", ref x, ButtonWidth, Gap);
-            RegisterAction(canvasGo.transform, PlayerAction.Double, "Double", ref x, ButtonWidth, Gap);
-            RegisterAction(canvasGo.transform, PlayerAction.Split, "Split", ref x, ButtonWidth, Gap);
-            RegisterAction(canvasGo.transform, PlayerAction.TakeInsurance, "Insure", ref x, ButtonWidth, Gap);
-            RegisterAction(canvasGo.transform, PlayerAction.DeclineInsurance, "No Ins.", ref x, ButtonWidth, Gap);
+            RegisterAction(barGo.transform, roundedSprite, PlayerAction.Hit, "Hit");
+            RegisterAction(barGo.transform, roundedSprite, PlayerAction.Stand, "Stand");
+            RegisterAction(barGo.transform, roundedSprite, PlayerAction.Double, "Double");
+            RegisterAction(barGo.transform, roundedSprite, PlayerAction.Split, "Split");
+            RegisterAction(barGo.transform, roundedSprite, PlayerAction.TakeInsurance, "Insure");
+            RegisterAction(barGo.transform, roundedSprite, PlayerAction.DeclineInsurance, "No Ins.");
         }
 
-        private void RegisterAction(Transform parent, PlayerAction action, string label, ref float x, float width, float gap)
+        private void RegisterAction(Transform parent, Sprite roundedSprite, PlayerAction action, string label)
         {
-            _actionBar.Register(action, CreateButton(parent, label, new Vector2(x, 24f), width));
-            x += width + gap;
+            _actionBar.Register(action, CreateButton(parent, roundedSprite, label));
         }
 
         private int FirstFreeBox()
@@ -158,55 +243,185 @@ namespace HouseRules.Blackjack.Presentation
                 typeof(InputSystemUIInputModule));
         }
 
-        private static Text CreateText(
-            Transform parent, string name, Vector2 anchor, Vector2 offset,
-            Vector2 size, TextAnchor alignment, int fontSize)
+        /// <summary>A container whose rect maps to Screen.safeArea; every HUD element parents under this.</summary>
+        private static RectTransform CreateSafeArea(Transform canvasTransform)
         {
-            var go = new GameObject(name, typeof(Text));
+            var go = new GameObject("SafeArea", typeof(RectTransform));
+            go.transform.SetParent(canvasTransform, false);
+
+            var rect = go.GetComponent<RectTransform>();
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            Rect safeArea = Screen.safeArea;
+            Vector2 anchorMin = safeArea.position;
+            Vector2 anchorMax = safeArea.position + safeArea.size;
+
+            if (Screen.width > 0 && Screen.height > 0)
+            {
+                anchorMin.x /= Screen.width;
+                anchorMin.y /= Screen.height;
+                anchorMax.x /= Screen.width;
+                anchorMax.y /= Screen.height;
+            }
+            else
+            {
+                anchorMin = Vector2.zero;
+                anchorMax = Vector2.one;
+            }
+
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            return rect;
+        }
+
+        /// <summary>
+        /// Generates one rounded-rect sprite at startup and 9-slices it, so every panel and
+        /// button gets real rounded corners without a single imported texture asset.
+        /// </summary>
+        private static Sprite CreateRoundedSprite()
+        {
+            const int size = 32;
+            const float radius = 10f;
+            const float border = 12f;
+
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                name = "RoundedPanel",
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    byte alpha = (byte)Mathf.RoundToInt(RoundedRectCoverage(x, y, size, radius) * 255f);
+                    pixels[(y * size) + x] = new Color32(255, 255, 255, alpha);
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply();
+
+            return Sprite.Create(
+                texture,
+                new Rect(0f, 0f, size, size),
+                new Vector2(0.5f, 0.5f),
+                100f,
+                0,
+                SpriteMeshType.FullRect,
+                new Vector4(border, border, border, border));
+        }
+
+        /// <summary>1 inside the rounded rect, 0 outside, anti-aliased across ~1px at the corner arcs.</summary>
+        private static float RoundedRectCoverage(int x, int y, int size, float radius)
+        {
+            float px = x + 0.5f;
+            float py = y + 0.5f;
+
+            bool inCornerBandX = px < radius || px > size - radius;
+            bool inCornerBandY = py < radius || py > size - radius;
+
+            if (!inCornerBandX || !inCornerBandY)
+            {
+                return 1f;
+            }
+
+            float cx = px < radius ? radius : size - radius;
+            float cy = py < radius ? radius : size - radius;
+            float dist = Vector2.Distance(new Vector2(px, py), new Vector2(cx, cy));
+
+            return Mathf.Clamp01(radius - dist + 0.5f);
+        }
+
+        private static Image CreatePanel(
+            Transform parent, Sprite roundedSprite, string name,
+            Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot,
+            Vector2 anchoredPosition, Vector2 sizeDelta)
+        {
+            var go = new GameObject(name, typeof(Image));
             go.transform.SetParent(parent, false);
 
             var rect = go.GetComponent<RectTransform>();
-            rect.anchorMin = anchor;
-            rect.anchorMax = anchor;
-            rect.pivot = new Vector2(0f, 1f);
-            rect.anchoredPosition = offset;
-            rect.sizeDelta = size;
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.pivot = pivot;
+            rect.anchoredPosition = anchoredPosition;
+            rect.sizeDelta = sizeDelta;
+
+            var image = go.GetComponent<Image>();
+            image.sprite = roundedSprite;
+            image.type = Image.Type.Sliced;
+            image.color = Palette.PanelDark;
+            return image;
+        }
+
+        private static void StretchWithPadding(RectTransform rect, float padding)
+        {
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.offsetMin = new Vector2(padding, padding);
+            rect.offsetMax = new Vector2(-padding, -padding);
+        }
+
+        private static Text CreateText(
+            Transform parent, string name, TextAnchor alignment, int fontSize, Color color)
+        {
+            var go = new GameObject(name, typeof(Text));
+            go.transform.SetParent(parent, false);
 
             var text = go.GetComponent<Text>();
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             text.fontSize = fontSize;
             text.alignment = alignment;
-            text.color = Color.white;
-            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.color = color;
+            text.supportRichText = true;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
             text.verticalOverflow = VerticalWrapMode.Overflow;
             return text;
         }
 
-        private static Button CreateButton(Transform parent, string label, Vector2 anchoredPosition, float width)
+        private static Button CreateButton(Transform parent, Sprite roundedSprite, string label)
         {
-            var go = new GameObject($"Button_{label}", typeof(Image), typeof(Button));
+            var go = new GameObject($"Button_{label}", typeof(Image), typeof(Button), typeof(LayoutElement));
             go.transform.SetParent(parent, false);
 
-            var rect = go.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0f, 0f);
-            rect.anchorMax = new Vector2(0f, 0f);
-            rect.pivot = new Vector2(0f, 0f);
-            rect.anchoredPosition = anchoredPosition;
-            rect.sizeDelta = new Vector2(width, 56f);
+            var image = go.GetComponent<Image>();
+            image.sprite = roundedSprite;
+            image.type = Image.Type.Sliced;
+            image.color = Palette.PanelDark;
 
-            go.GetComponent<Image>().color = new Color(0.16f, 0.22f, 0.18f, 1f);
+            var layoutElement = go.GetComponent<LayoutElement>();
+            layoutElement.minWidth = ButtonMinWidth;
+            layoutElement.preferredWidth = ButtonMinWidth;
+            layoutElement.minHeight = ButtonHeight;
+            layoutElement.preferredHeight = ButtonHeight;
 
-            Text text = CreateText(go.transform, "Label", new Vector2(0f, 1f), Vector2.zero,
-                new Vector2(width, 56f), TextAnchor.MiddleCenter, 22);
+            var button = go.GetComponent<Button>();
+            button.targetGraphic = image;
+            button.transition = Selectable.Transition.ColorTint;
+
+            ColorBlock colors = button.colors;
+            colors.normalColor = Palette.PanelDark;
+            colors.highlightedColor = Palette.Lift(Palette.PanelDark, 0.15f);
+            colors.selectedColor = colors.highlightedColor;
+            colors.pressedColor = Palette.Darken(Palette.PanelDark, 0.10f);
+            // A visibly, unmistakably disabled state — not just "slightly dimmer" — plus
+            // ActionBarView mutes the label colour from the same interactable flag.
+            colors.disabledColor = new Color(Palette.PanelDark.r, Palette.PanelDark.g, Palette.PanelDark.b, 0.35f);
+            colors.colorMultiplier = 1f;
+            colors.fadeDuration = 0.08f;
+            button.colors = colors;
+
+            Text text = CreateText(go.transform, "Label", TextAnchor.MiddleCenter, ButtonFontSize, Palette.TextPrimary);
             text.text = label;
-            RectTransform textRect = text.GetComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.pivot = new Vector2(0.5f, 0.5f);
-            textRect.offsetMin = Vector2.zero;
-            textRect.offsetMax = Vector2.zero;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            StretchWithPadding(text.GetComponent<RectTransform>(), 4f);
 
-            return go.GetComponent<Button>();
+            return button;
         }
     }
 }

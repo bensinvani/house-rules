@@ -12,12 +12,6 @@ namespace HouseRules.Blackjack.Presentation
     {
         public static readonly Vector3 CardSize = new Vector3(0.63f, 0.02f, 0.88f);
 
-        // Visual Quality Bar palette tokens (docs/superpowers/plans/2026-08-13-blackjack-visuals.md).
-        // No pure white/black anywhere in the game, cards included.
-        private static readonly Color CardFace = new Color(0.976f, 0.973f, 0.957f, 1f);
-        private static readonly Color CardInk = new Color(0.106f, 0.106f, 0.118f, 1f);
-        private static readonly Color CardRed = new Color(0.729f, 0.129f, 0.129f, 1f);
-
         private TextMesh _faceText;
         private Renderer _renderer;
 
@@ -41,19 +35,21 @@ namespace HouseRules.Blackjack.Presentation
             // Lift slightly above the top face and lie flat, readable from a top-down camera.
             textGo.transform.localPosition = new Vector3(0f, 0.55f, 0f);
             textGo.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            // Non-uniform because the child is rotated flat: local X stays the card's
-            // width axis, local Y becomes the card's length axis after the rotation.
-            // TextMesh's legacy runtime font scales its mesh by fontSize, not just
-            // characterSize, so a small fontSize plus this modest localScale is what
-            // keeps two lines of text inside the 0.63 x 0.88 face instead of ballooning
-            // off the card (verified empirically via mesh bounds, not by eye alone).
-            textGo.transform.localScale = new Vector3(1.0f, 0.35f, 1.0f);
+            // The card root carries a non-uniform scale (CardSize), and after the 90-degree
+            // rotation above, local X still maps to world X (card width) but local Y now maps
+            // to world Z (card length) instead of Y. Dividing by those two components cancels
+            // the parent's non-uniform scale exactly, so the TextMesh below renders at its own
+            // literal characterSize/fontSize in world units — undistorted and independent of
+            // CardSize — instead of compounding with it (confirmed via capture: the previous
+            // fixed 0.35 multiplier here silently relied on one specific CardSize and, combined
+            // with it, sheared every digit into an unreadable diagonal smear).
+            textGo.transform.localScale = new Vector3(1f / CardSize.x, 1f / CardSize.z, 1f / CardSize.x);
 
             var text = textGo.AddComponent<TextMesh>();
             text.anchor = TextAnchor.MiddleCenter;
             text.alignment = TextAlignment.Center;
-            text.fontSize = 20;
-            text.characterSize = 0.5f;
+            text.fontSize = 64;
+            text.characterSize = 0.05f;
             view._faceText = text;
 
             return view;
@@ -73,12 +69,14 @@ namespace HouseRules.Blackjack.Presentation
             {
                 _faceText.gameObject.SetActive(faceUp);
                 _faceText.text = Label(Card);
-                _faceText.color = IsRed(Card.Suit) ? CardRed : CardInk;
+                _faceText.color = IsRed(Card.Suit) ? Palette.CardRed : Palette.CardInk;
             }
 
             if (_renderer != null)
             {
-                _renderer.material.color = faceUp ? CardFace : CardInk;
+                // Face-down body uses the CardBack token, not CardInk — a face-down card
+                // should read as navy card stock, not as a shadow.
+                _renderer.material.color = faceUp ? Palette.CardFace : Palette.CardBack;
             }
         }
 
@@ -96,6 +94,7 @@ namespace HouseRules.Blackjack.Presentation
                 elapsed += Time.deltaTime;
                 float t = Easing.Clamp01(elapsed / duration);
                 transform.rotation = Quaternion.SlerpUnclamped(from, to, Easing.InOutCubic(t));
+                AlignFaceUpright();
 
                 if (!swapped && t >= 0.5f)
                 {
@@ -107,6 +106,23 @@ namespace HouseRules.Blackjack.Presentation
             }
 
             transform.rotation = to;
+            AlignFaceUpright();
+        }
+
+        /// <summary>
+        /// The card body ends every other flip permanently rotated 180 degrees about Z — fine
+        /// for the body, which is a uniformly-coloured box with no "back" mesh to reveal, but
+        /// the Face child inherits that spin too, which mirrors its rank/suit into unreadable
+        /// junk (a "2" mirrors into something that reads like "S"). Re-pinning the Face to a
+        /// fixed world rotation each frame keeps it lying flat and right-reading regardless of
+        /// how many times this card has been flipped.
+        /// </summary>
+        private void AlignFaceUpright()
+        {
+            if (_faceText != null)
+            {
+                _faceText.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+            }
         }
 
         private static bool IsRed(Suit suit) => suit == Suit.Diamonds || suit == Suit.Hearts;

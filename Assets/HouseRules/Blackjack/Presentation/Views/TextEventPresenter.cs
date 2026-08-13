@@ -14,7 +14,8 @@ namespace HouseRules.Blackjack.Presentation
     /// </summary>
     public sealed class TextEventPresenter : MonoBehaviour, IEventPresenter
     {
-        private const int MaxLines = 18;
+        // Visual Quality Bar: the log panel is sized for "at most ~10 lines" at 14pt.
+        private const int MaxLines = 10;
 
         private readonly Queue<string> _lines = new Queue<string>();
         private Text _target;
@@ -64,6 +65,16 @@ namespace HouseRules.Blackjack.Presentation
             if (_target != null)
             {
                 _target.text = string.Empty;
+            }
+        }
+
+        /// <summary>Log an event without consuming sequencer time. Used when another presenter drives playback.</summary>
+        public void Log(GameEvent gameEvent)
+        {
+            string line = Describe(gameEvent);
+            if (!string.IsNullOrEmpty(line))
+            {
+                Append(line);
             }
         }
 

@@ -6,14 +6,14 @@ namespace HouseRules.Blackjack.Presentation
     /// <summary>Scene root: felt, box anchors, the dealer's hand, and the shoe position.</summary>
     public sealed class TableView : MonoBehaviour
     {
-        private const float BoxSpacingX = 2.6f;
+        // BoxView.SplitOffsetX (1.15) is the distance between a box's split hands, and a box
+        // can hold up to 4 of them (three splits), so a split-out box spans up to
+        // SplitOffsetX * 3 = 3.45 units from its anchor. 4.2 gives that a 0.75 margin before
+        // it reaches the neighbouring box's own anchor, so two fully split boxes never overlap.
+        // (Previously 2.6, which is less than 3.45 — a confirmed overlap defect.)
+        private const float BoxSpacingX = 4.2f;
         private const float PlayerRowZ = -1.9f;
         private const float DealerRowZ = 1.7f;
-
-        // Visual Quality Bar palette tokens (docs/superpowers/plans/2026-08-13-blackjack-visuals.md).
-        // No pure white/black anywhere in the game.
-        private static readonly Color FeltGreen = new Color(0.086f, 0.294f, 0.180f, 1f);
-        private static readonly Color FeltShadow = new Color(0.043f, 0.157f, 0.098f, 1f);
 
         private readonly List<BoxView> _boxes = new List<BoxView>();
 
@@ -31,10 +31,14 @@ namespace HouseRules.Blackjack.Presentation
 
             for (int i = 0; i < boxCount; i++)
             {
+                var boxLocalPosition = new Vector3(firstX + (i * BoxSpacingX), 0f, PlayerRowZ);
+
                 var go = new GameObject($"Box{i}");
                 go.transform.SetParent(transform, false);
-                go.transform.localPosition = new Vector3(firstX + (i * BoxSpacingX), 0f, PlayerRowZ);
+                go.transform.localPosition = boxLocalPosition;
                 _boxes.Add(go.AddComponent<BoxView>());
+
+                CreateBettingCircle(boxLocalPosition, (i + 1).ToString());
             }
 
             var dealerGo = new GameObject("DealerHand");
@@ -65,16 +69,46 @@ namespace HouseRules.Blackjack.Presentation
             shadow.name = "FeltShadow";
             shadow.transform.SetParent(transform, false);
             shadow.transform.localPosition = new Vector3(0f, -0.01f, 0f);
-            shadow.transform.localScale = new Vector3(1.75f, 1f, 1.2f);
+            shadow.transform.localScale = new Vector3(2.15f, 1f, 1.2f);
             Object.Destroy(shadow.GetComponent<MeshCollider>());
-            shadow.GetComponent<Renderer>().material.color = FeltShadow;
+            shadow.GetComponent<Renderer>().material.color = Palette.FeltShadow;
 
             var felt = GameObject.CreatePrimitive(PrimitiveType.Plane);
             felt.name = "Felt";
             felt.transform.SetParent(transform, false);
-            felt.transform.localScale = new Vector3(1.6f, 1f, 1.1f);
+            felt.transform.localScale = new Vector3(2.0f, 1f, 1.1f);
             Object.Destroy(felt.GetComponent<MeshCollider>());
-            felt.GetComponent<Renderer>().material.color = FeltGreen;
+            felt.GetComponent<Renderer>().material.color = Palette.FeltGreen;
+        }
+
+        /// <summary>
+        /// A flattened disc plus a numeral so the felt reads as a blackjack table with betting
+        /// spots even before a single card lands. Purely decorative — it holds no game state.
+        /// </summary>
+        private void CreateBettingCircle(Vector3 boxLocalPosition, string numeral)
+        {
+            var disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            disc.name = "BettingCircle";
+            disc.transform.SetParent(transform, false);
+            disc.transform.localPosition = boxLocalPosition + new Vector3(0f, 0.008f, 0f);
+            disc.transform.localScale = new Vector3(0.9f, 0.01f, 0.9f);
+            Object.Destroy(disc.GetComponent<CapsuleCollider>());
+            disc.GetComponent<Renderer>().material.color = Palette.FeltShadow;
+
+            var numeralGo = new GameObject("Numeral");
+            numeralGo.transform.SetParent(transform, false);
+            numeralGo.transform.localPosition = boxLocalPosition + new Vector3(0f, 0.02f, 0f);
+            // Lie flat, readable from the top-down camera, same trick as CardView's face text.
+            numeralGo.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            numeralGo.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
+
+            var text = numeralGo.AddComponent<TextMesh>();
+            text.anchor = TextAnchor.MiddleCenter;
+            text.alignment = TextAlignment.Center;
+            text.fontSize = 48;
+            text.characterSize = 0.5f;
+            text.color = Palette.Accent;
+            text.text = numeral;
         }
     }
 }

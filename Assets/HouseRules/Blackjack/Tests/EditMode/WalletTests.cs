@@ -93,14 +93,5 @@ namespace HouseRules.Blackjack.Tests
             Assert.AreEqual(3, rules.MaxBoxes);
         }
 
-        [Test]
-        public void BlackjackPayout_IsExactIntegerMath_ForEveryLegalWager()
-        {
-            // Every legal wager is even, so wager * 3 / 2 must never truncate.
-            for (long wager = 2; wager <= 1000; wager += 2)
-            {
-                Assert.AreEqual(wager * 3 / 2.0, wager * 3 / 2, $"Truncation at wager {wager}.");
-            }
-        }
     }
 }

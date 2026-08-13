@@ -1080,18 +1080,14 @@ namespace HouseRules.Blackjack.Tests
             Assert.AreEqual(3, rules.MaxBoxes);
         }
 
-        [Test]
-        public void BlackjackPayout_IsExactIntegerMath_ForEveryLegalWager()
-        {
-            // Every legal wager is even, so wager * 3 / 2 must never truncate.
-            for (long wager = 2; wager <= 1000; wager += 2)
-            {
-                Assert.AreEqual(wager * 3 / 2.0, wager * 3 / 2, $"Truncation at wager {wager}.");
-            }
-        }
     }
 }
 ```
+
+Note: there is deliberately **no** payout-exactness test here. Asserting
+`wager * 3 / 2.0 == wager * 3 / 2` for even wagers is a number-theory tautology
+that exercises no production code and cannot fail. The real 3:2 exactness
+assertion lives in Task 13, where `Settlement` actually performs the division.
 
 - [ ] **Step 2: Run the test to verify it fails**
 
@@ -1252,7 +1248,7 @@ Poll until `completed`, then:
 unity command run_tests --mode editor --filter WalletTests
 ```
 
-Expected: PASS, 10 tests.
+Expected: PASS, 9 tests.
 
 - [ ] **Step 6: Commit**
 
@@ -3743,6 +3739,30 @@ namespace HouseRules.Blackjack.Tests
         }
 
         [Test]
+        public void Blackjack_PaysExact3To2_AcrossEveryLegalWager()
+        {
+            // Drives the real settlement path for every legal wager, so a truncating
+            // payout would actually fail here. (Asserting wager*3/2.0 == wager*3/2
+            // in isolation proves nothing — it is an arithmetic identity for even wagers.)
+            for (long wager = 2; wager <= 200; wager += 2)
+            {
+                var wallet = new Wallet(10000);
+                var round = new Round(
+                    BlackjackRules.Standard,
+                    new StackedShoe(C(Rank.Ace), C(Rank.Nine), C(Rank.King), C(Rank.Seven)),
+                    wallet);
+
+                round.PlaceBet(0, wager);
+                round.Deal();
+
+                Settlement s = round.Settlements.Single();
+                Assert.AreEqual(HandOutcome.Blackjack, s.Outcome, $"wager {wager}");
+                Assert.AreEqual(wager + (wager * 3 / 2), s.Payout, $"wager {wager}");
+                Assert.AreEqual(10000 + (wager * 3 / 2), wallet.Balance, $"wager {wager}");
+            }
+        }
+
+        [Test]
         public void BlackjackVersusDealerBlackjack_Pushes()
         {
             var wallet = new Wallet(1000);
@@ -4095,7 +4115,7 @@ Poll until `completed`, then:
 unity command run_tests --mode editor --filter SettlementTests
 ```
 
-Expected: PASS, 11 tests.
+Expected: PASS, 12 tests.
 
 - [ ] **Step 8: Run the whole suite**
 

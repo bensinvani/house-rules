@@ -153,5 +153,38 @@ namespace HouseRules.Blackjack.Tests
             Assert.AreEqual(RoundState.PlayerTurn, round.State);
             Assert.AreEqual(1, round.CurrentBoxIndex, "Play should skip the natural and land on box 1.");
         }
+
+        [Test]
+        public void Double_DebitsWallet_DoublesWager_DealsExactlyOneCard_AndCloses()
+        {
+            var wallet = new Wallet(1000);
+            var round = Dealt(wallet,
+                C(Rank.Six), C(Rank.Six), C(Rank.Five), C(Rank.Four), C(Rank.Nine));
+
+            Assert.AreEqual(990, wallet.Balance);
+
+            round.Apply(PlayerAction.Double);
+
+            Hand hand = round.Boxes[0].Hands[0];
+            Assert.AreEqual(20, hand.Wager);
+            Assert.IsTrue(hand.IsDoubled);
+            Assert.AreEqual(3, hand.Cards.Count);
+            Assert.IsTrue(hand.IsClosed);
+            Assert.AreEqual(980, wallet.Balance);
+            Assert.AreEqual(RoundState.DealerTurn, round.State);
+        }
+
+        [Test]
+        public void Double_ThatBusts_StillClosesTheHand()
+        {
+            var round = Dealt(new Wallet(1000),
+                C(Rank.Ten), C(Rank.Six), C(Rank.Six), C(Rank.Four), C(Rank.King));
+
+            round.Apply(PlayerAction.Double);
+
+            Hand hand = round.Boxes[0].Hands[0];
+            Assert.IsTrue(hand.IsBust);
+            Assert.IsTrue(hand.IsClosed);
+        }
     }
 }

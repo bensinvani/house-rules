@@ -13,8 +13,6 @@ namespace HouseRules.Blackjack
 
         private void BeginDealerTurn() => SetState(RoundState.DealerTurn);
 
-        private void ApplyDouble() => throw new System.NotImplementedException();
-
         private void ApplySplit() => throw new System.NotImplementedException();
 
         private void ApplyInsurance(bool taken) => throw new System.NotImplementedException();

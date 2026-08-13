@@ -23,4 +23,18 @@ namespace HouseRules.Blackjack
         public int BoxIndex { get; }
         public int HandIndex { get; }
     }
+
+    public sealed class HandDoubled : GameEvent
+    {
+        public HandDoubled(int boxIndex, int handIndex, long newWager)
+        {
+            BoxIndex = boxIndex;
+            HandIndex = handIndex;
+            NewWager = newWager;
+        }
+
+        public int BoxIndex { get; }
+        public int HandIndex { get; }
+        public long NewWager { get; }
+    }
 }

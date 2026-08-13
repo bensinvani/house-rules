@@ -74,6 +74,27 @@ namespace HouseRules.Blackjack
             AdvanceTurn();
         }
 
+        private void ApplyDouble()
+        {
+            Hand hand = CurrentHand;
+
+            _wallet.Debit(hand.Wager);
+            hand.SetWager(hand.Wager * 2);
+            hand.MarkDoubled();
+            Emit(new HandDoubled(CurrentBoxIndex, CurrentHandIndex, hand.Wager));
+
+            DealTo(CurrentBoxIndex, CurrentHandIndex, hand, faceUp: true);
+
+            if (hand.IsBust)
+            {
+                Emit(new HandBusted(CurrentBoxIndex, CurrentHandIndex));
+            }
+
+            // A doubled hand receives exactly one card and is finished either way.
+            hand.Close();
+            AdvanceTurn();
+        }
+
         private void AdvanceTurn()
         {
             if (AdvanceToNextPlayableHand())

@@ -19,7 +19,7 @@ namespace HouseRules.Blackjack.Tests
         {
         }
 
-        public StackedShoe(Card filler, Card[] scripted)
+        public StackedShoe(Card filler, params Card[] scripted)
         {
             _scripted = new List<Card>(scripted ?? Array.Empty<Card>());
             _filler = filler;

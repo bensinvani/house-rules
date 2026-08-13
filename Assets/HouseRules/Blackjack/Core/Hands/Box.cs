@@ -29,14 +29,14 @@ namespace HouseRules.Blackjack
         /// <summary>Insurance side bet, or 0 if none was taken.</summary>
         public long InsuranceBet { get; private set; }
 
-        public void SetInitialBet(long wager) => InitialBet = wager;
+        internal void SetInitialBet(long wager) => InitialBet = wager;
 
-        public void SetInsuranceBet(long amount) => InsuranceBet = amount;
+        internal void SetInsuranceBet(long amount) => InsuranceBet = amount;
 
-        public void AddHand(Hand hand) => _hands.Add(hand);
+        internal void AddHand(Hand hand) => _hands.Add(hand);
 
-        public void InsertHandAfter(int index, Hand hand) => _hands.Insert(index + 1, hand);
+        internal void InsertHandAfter(int index, Hand hand) => _hands.Insert(index + 1, hand);
 
-        public void ReplaceHand(int index, Hand hand) => _hands[index] = hand;
+        internal void ReplaceHand(int index, Hand hand) => _hands[index] = hand;
     }
 }

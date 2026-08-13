@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 
 namespace HouseRules.Blackjack
@@ -25,13 +24,13 @@ namespace HouseRules.Blackjack
         /// <summary>True once the hand can take no further action (stood, doubled, busted, or a split ace).</summary>
         public bool IsClosed { get; private set; }
 
-        public void Add(Card card) => _cards.Add(card);
+        internal void Add(Card card) => _cards.Add(card);
 
-        public void SetWager(long wager) => Wager = wager;
+        internal void SetWager(long wager) => Wager = wager;
 
-        public void MarkDoubled() => IsDoubled = true;
+        internal void MarkDoubled() => IsDoubled = true;
 
-        public void Close() => IsClosed = true;
+        internal void Close() => IsClosed = true;
 
         public HandValue Value
         {

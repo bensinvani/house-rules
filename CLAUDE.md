@@ -4,9 +4,9 @@ Unity 6.3 LTS (6000.3.22f1), URP 17.3.0, new Input System.
 Mobile game: casino games (blackjack, roulette) + board games
 (backgammon, checkers, chess).
 
-Shipping target is Android (module installed). The active build target is
-currently `StandaloneWindows64` — switch with `switch_build_target` when you
-actually need an Android build. iOS is not installed.
+Shipping target is Android (module installed, and the active build target since
+2026-08-14). iOS is not installed. The playable scene is
+`Assets/Scenes/Blackjack.unity`; APK builds land in `Builds/` (gitignored).
 
 ## Driving the Editor
 
@@ -46,6 +46,15 @@ Two gotchas, both hit in practice:
 Sequence: `create_script` -> `recompile` -> poll `recompile_status` until it
 reports `completed` -> `attach_script`. Attaching before the recompile finishes
 returns a recoverable error.
+
+### Running tests
+- EditMode: `unity command run_tests --mode editor --filter <TestClass>`
+  (`--filter_type assembly` for a whole assembly; `--timeout 600` for long suites).
+- PlayMode: a synchronous run returns `Total: 0` with `success: true` and runs
+  **nothing** — PlayMode tests need play-mode entry, which cannot complete inside
+  a blocking call. Always run `--async_tests true`, then poll
+  `unity command test_status` until `completed`. Treat `Total: 0` as "did not
+  run", never as "passed"; cross-check against `list_tests --mode playmode`.
 
 ### Destructive commands
 These take `--confirm true`, and most also take `--dry_run true`:

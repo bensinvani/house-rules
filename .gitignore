@@ -53,3 +53,6 @@ crashlytics-build.properties
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Android build intermediates (Unity gradle/ninja cache)
+/.utmp/
